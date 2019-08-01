@@ -1,1 +1,2 @@
-# Linear Regression with hypothesis testing and residual analysis
+# Linear Regression
+   hypothesis testing and residual analysis
