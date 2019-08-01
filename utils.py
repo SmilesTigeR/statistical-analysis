@@ -1,7 +1,10 @@
-import pandas as pd
 import numpy as np
 from scipy import stats
 import math
+import pandas as pd
+# from statsmodels.graphics.gofplots import qqplot
+# import matplotlib.pyplot as plt
+import altair as alt
 
 # design for dataframe
 class LinearRegression:
@@ -68,74 +71,14 @@ class LinearRegression:
                         col = cat + str(cols[i]) + con
                         self.df[col] = temp
 
-
-        # if interaction is not None:
-        #     for inter in interaction:
-        #         TEMP = [ ]
-        #         for i in range(len(self.df)):
-        #             temp = [ ]
-        #             if inter[0] in categorical and inter[1] in categorical:
-        #                 col_1 = self.df[inter[0]].unique()
-        #                 col_2 = self.df[inter[1]].unique()
-        #                 if ascending is False:
-        #                     col_1 = col_1[::-1]
-        #                     col_2 = col_2[::-1]
-        #                 for j in range(len(col_1) - 1):
-        #                     for k in range(len(col_2) - 1):
-        #                         if self.df[inter[0]].loc[i] == col_1[j] and self.df[inter[1]].loc[i] == col_2[k]:
-        #                             temp.append(1)
-        #                         else:
-        #                             temp.append(0)
-        #             else:
-        #                 if inter[0] in categorical and inter[1] not in categorical:
-        #                     cat = inter[0]
-        #                     con = inter[1]
-        #                 else:
-        #                     cat = inter[1]
-        #                     con = inter[0]
-        #                 col = self.df[cat].unique()
-        #                 if ascending is False:
-        #                     col = col[::-1]
-        #                 for j in range(len(col) - 1):
-        #                     if self.df[cat].loc[i] == col[j]:
-        #                         temp.append(self.df[con].loc[i])
-        #                     else:
-        #                         temp.append(0)
-        #
-        #             TEMP.append(temp)
-        #         TEMP = np.array(TEMP)
-        #         if inter[0] in categorical and inter[1] in categorical:
-        #             col_1 = self.df[inter[0]].unique()
-        #             col_2 = self.df[inter[1]].unique()
-        #             if ascending is False:
-        #                 col_1 = col_1[::-1]
-        #                 col_2 = col_2[::-1]
-        #             for j in range(len(self.df[inter[0]].unique()) - 1):
-        #                 for k in range(len(self.df[inter[1]].unique()) - 1):
-        #                     col = inter[0] + '_' + str(col_1[j]) + '_' + inter[1] + '_' + str(col_2[k])
-        #                     self.X[col] = TEMP.transpose()[j * (len(col_2) - 1) + k]
-        #         else:
-        #             if inter[0] in categorical and inter[1] not in categorical:
-        #                 cat = inter[0]
-        #                 con = inter[1]
-        #             else:
-        #                 cat = inter[1]
-        #                 con = inter[0]
-        #             col = self.df[cat].unique()
-        #             if ascending is False:
-        #                 col = col[::-1]
-        #             for j in range(len(col) - 1):
-        #                 col = cat + '_' + str(col[j]) + '_' + con
-        #                 self.X[col] = TEMP.transpose()[j]
-
         if self.fit_intercept is True:
-            length = len(self.df) - len(self.X.columns.values.tolist()) - 1
-            X = np.c_[np.ones(len(self.df)), np.array(self.X)]
+            self.X['Intercept'] = [1] * len(self.df)
+            col = self.X.columns.tolist()
+            col = col[-1 : ] + col[ : -1]
+            self.X = self.X[col]
 
-        else:
-            length = len(self.df) - len(self.X.columns.values.tolist())
-            X = self.X
-            X = np.array(X)
+        X = self.X
+        X = np.array(X)
 
         y = self.df[col_y]
         y = np.array(y)
@@ -146,13 +89,13 @@ class LinearRegression:
         RES_SS = np.dot(y, np.transpose(y)) - np.dot(self.coef, np.dot(np.transpose(X), np.transpose(y)))
         self.param['Res S.S.'] = RES_SS
         if self.fit_intercept is True:
-            TOTAL_SS = np.dot(y, (np.dot((np.identity(len(self.df)) - 1/len(df) * np.ones((len(self.df), len(self.df)))), y.transpose())))
+            TOTAL_SS = np.dot(y, (np.dot((np.identity(len(self.df)) - 1/len(self.df) * np.ones((len(self.df), len(self.df)))), y.transpose())))
         else:
             TOTAL_SS = np.dot(y.transpose(), y)
         self.param['Reg S.S.'] = TOTAL_SS - RES_SS
         self.param['Total S.S.'] = TOTAL_SS
 
-        self.sigma = math.sqrt(RES_SS / length)
+        self.sigma = math.sqrt(RES_SS / (len(self.df) - len(self.X.columns.values.tolist())))
         self.r2 = 1 - RES_SS/TOTAL_SS
         self.std = np.linalg.inv(np.dot(np.transpose(X), X)) * (self.sigma)**2
         return self
@@ -166,22 +109,13 @@ class LinearRegression:
 
     def change_sigma(self, sigma):
         self.sigma = sigma
-        if self.fit_intercept is True:
-            X = np.c_[np.ones(len(self.df)), np.array(self.X)]
-        else:
-            X = np.array(self.X)
-        self.std = np.linalg.inv(np.dot(np.transpose(X), X)) * (self.sigma) ** 2
+        self.std = np.linalg.inv(np.dot(np.transpose(self.X), self.X)) * (self.sigma) ** 2
         return self
 
     def hypothesis_testing(self, col_X, col_y):
         C = [ ]
         for i in range(len(col_X)):
             temp = [ ]
-            if self.fit_intercept is True:
-                if col_X[i].get('Intercept') is not None:
-                    temp.append(col_X[i].get('Intercept'))
-                else:
-                    temp.append(0)
             for col in self.X.columns.values.tolist():
                 if col_X[i].get(col) is not None:
                     temp.append(col_X[i].get(col))
@@ -191,7 +125,7 @@ class LinearRegression:
         C = np.array(C)
         d = np.array(col_y)
         test_stat = np.dot(np.transpose(np.dot(C, self.coef.transpose()) - d), np.dot(np.linalg.inv(np.dot(C, np.dot(self.std / self.sigma ** 2, C.transpose()))), (np.dot(C, self.coef.transpose()) - d)))/(np.linalg.matrix_rank(C) * self.sigma ** 2)
-        p_value = 1 - stats.f.cdf(test_stat, np.linalg.matrix_rank(C), len(self.df) - len(self.X.columns.values.tolist()) - self.fit_intercept)
+        p_value = 1 - stats.f.cdf(test_stat, np.linalg.matrix_rank(C), len(self.df) - len(self.X.columns.values.tolist()))
         print('Test statistic:', test_stat)
         print('Pr:', p_value)
 
@@ -238,9 +172,9 @@ class LinearRegression:
         else:
             if pure_error - self.param['Res S.S.'] > epsilon or pure_error - self.param['Res S.S.'] < - epsilon:
                 test_stat = ((self.param['Res S.S.'] - pure_error) / (len(lack_fit) - len(self.X.columns) - self.fit_intercept)) / (pure_error / (len(self.df) - len(lack_fit)))
-                print('{0: <10}        {1: <10}'.format('Source', 'Sum of Square'))
-                print('{0: <10}        {1: <10}'.format('Lack of Fit', "{0:.4f}".format(self.param['Res S.S.'] - pure_error)))
-                print('{0: <10}        {1: <10}'.format('Pure Error', "{0:.4f}".format(pure_error)))
+                print('{0: <12}        {1: <10}'.format('Source', 'Sum of Square'))
+                print('{0: <12}        {1: <10}'.format('Lack of Fit', "{0:.4f}".format(self.param['Res S.S.'] - pure_error)))
+                print('{0: <12}        {1: <10}'.format('Pure Error', "{0:.4f}".format(pure_error)))
                 print('F-value:', test_stat)
                 print('Pr(Lack of Fit):', 1 - stats.f.cdf(test_stat, len(lack_fit) - len(self.X.columns) - self.fit_intercept, len(self.df) - len(lack_fit)))
                 print('')
@@ -249,49 +183,96 @@ class LinearRegression:
 
     def summary(self):
         columns = self.X.columns.values.tolist()
+        length = len(self.df) - len(columns)
+
         print('{0: <15}     {1: <15}     {2: <15}'.format('Factor', 'Coefficient', 'Pr(|t|>0)'))
-        if self.fit_intercept is True:
-            length = len(self.df) - len(self.X.columns.values.tolist()) - 1
-            print('{0: <15}     {1: <15}     {2: <15}'.format('Intercept', "{0:.4f}".format(self.coef[0]), "{0:.4f}".format(2 * (1 - stats.t.cdf(abs(self.coef[0]) / math.sqrt(self.std[0][0]), length)))))
-        else:
-            length = len(self.df) - len(self.X.columns.values.tolist())
         for i in range(len(columns)):
-            print('{0: <15}     {1: <15}     {2: <15}'.format(columns[i], "{0:.4f}".format(self.coef[i + self.fit_intercept]), "{0:.4f}".format(2 * (1 - stats.t.cdf(abs(self.coef[i + self.fit_intercept]) / math.sqrt(self.std[i + self.fit_intercept][i + self.fit_intercept]), length)))))
+            print('{0: <15}     {1: <15}     {2: <15}'.format(columns[i], "{0:.4f}".format(self.coef[i]), "{0:.4f}".format(2 * (1 - stats.t.cdf(abs(self.coef[i]) / math.sqrt(self.std[i][i]), length)))))
         print('------------------------------------------------------------')
         print('{0: <10}        {1: <10}'.format('Source', 'Sum of Square'))
         print('{0: <10}        {1: <10}'.format('Total S.S.', "{0:.4f}".format(self.param['Total S.S.'])))
         print('{0: <10}        {1: <10}'.format('Reg S.S.', "{0:.4f}".format(self.param['Reg S.S.'])))
         print('{0: <10}        {1: <10}'.format('Res S.S.', "{0:.4f}".format(self.param['Res S.S.'])))
-        test_stat = (self.param['Reg S.S.'] / len(self.X.columns)) / (self.param['Res S.S.'] / (len(self.df) - len(self.X.columns) - self.fit_intercept))
+        test_stat = (self.param['Reg S.S.'] / (len(self.X.columns) - self.fit_intercept)) / (self.param['Res S.S.'] / (len(self.df) - len(self.X.columns)))
         print('F-value:', test_stat)
-        print('Pr(F):', 1 - stats.f.cdf(test_stat, len(self.X.columns) + self.fit_intercept,
-                                                  len(self.df) - len(self.X.columns) - self.fit_intercept))
+        print('Pr(F):', 1 - stats.f.cdf(test_stat, len(self.X.columns) - self.fit_intercept, len(self.df) - len(self.X.columns)))
         print('------------------------------------------------------------')
         print('R-squared:', self.r2)
-        print('Adjusted R-squared:', (1 - (self.param['Res S.S.'] / (len(self.df) - len(self.X.columns) - self.fit_intercept)) / (self.param['Total S.S.'] / (len(self.df) - self.fit_intercept))))
+        print('Adjusted R-squared:', (1 - (self.param['Res S.S.'] / (len(self.df) - len(self.X.columns))) / (self.param['Total S.S.'] / (len(self.df) - self.fit_intercept))))
+        print('AIC:', len(self.df) * math.log(self.param['Res S.S.'] / len(self.df)) + 2 * len(self.X.columns))
+        print('BIC:', len(self.df) * math.log(self.param['Res S.S.'] / len(self.df)) + math.log(len(self.df)) * len(self.X.columns))
         print(' ')
 
+    def residual(self, type = 'residual'):
+        residual = []
+        X = np.array(self.X)
 
+        if type == 'residual':
+            for i in range(len(self.df)):
+                residual.append(self.y.loc[i] - np.dot(self.coef, X.transpose())[i])
+            return np.array(residual)
+        elif type == 'standardised':
+            for i in range(len(self.df)):
+                residual.append(self.y.loc[i] - np.dot(self.coef, X.transpose())[i])
+            residual = np.array(residual)
+            return residual / math.sqrt(np.dot(residual, residual.transpose()) / (len(self.df) - 1))
 
-# df = pd.DataFrame({'X1' : [1, 2, 2, 3, 3, 4, 5, 5, 5, 6, 7, 8, 8, 9, 9, 10, 11, 11, 11, 12],
-#                    'X2' : [-1, 2, 2, 2, 2, 7, 7, 8, 8, 8, 3, 4, 4, 5, 6, 9, 10, 10, 11, 12],
-#                    'X1c' : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-#                    'X2c' : [0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1],
-#                    'y' : [-3, 7, 8, 5, 9, 20, 19, 19, 18, 20, 15, 15, 16, 18, 22, 32, 31, 34, 33, 37]})
-# df = pd.DataFrame({'X' : [1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3],
-#                    'y' : [79.5, 82.0, 80.6, 84.9, 81.0, 81.5, 82.3, 81.4, 79.5, 83.0, 78.1, 80.2, 81.5, 83.0, 82.1]})
-# model = LinearRegression(df, fit_intercept = True)
-# model.fit(['X1c', 'X2c'], 'y', categorical = ['X1c', 'X2c'], interaction = [['X1c', 'X2c']], ascending = False)
-# model.change_sigma(1)
-# model.summary()
-# model.hypothesis_testing([{'X1c1' : 1, 'X2c1' : 1, 'X1c1_X2c1' : 1}], [0])
-# model.lack_of_fit()
-# print(model.predict([[1, 0, 1], [0, 1, 0]]))
+    def residual_plot(self):
+        residual = self.residual('standardised')
+        X = np.array(self.X)
+        y = np.dot(self.coef, X.transpose())
+        df = pd.DataFrame({'residual' : residual,
+                           'predict' : y})
+        df['index'] = df.index
+        line = np.arange(min(df['predict']) - 0.1, max(df['predict']) + 0.1,
+                         (max(df['predict']) - min(df['predict']) + 0.2) / 100)
+        line = np.array(line)
+        line = pd.DataFrame({'x': line, 'y': np.array([0] * len(line))})
+        line = alt.Chart(line).mark_line().encode(x = 'x', y = 'y')
+        chart = alt.Chart(df, title='Residual plot').mark_point().encode(x = 'predict', y = 'residual', tooltip=['index'])
+        chart.encoding.x.title = 'Predicted'
+        chart.encoding.y.title = 'Standardised residual'
+        return line + chart
 
+    def normal_plot(self):
+        residual = self.residual()
 
+        if len(residual) > 10:
+            a = 0.5
+        else:
+            a = 0.375
 
+        df = pd.DataFrame({'residual' : residual})
+        df['index'] = df.index
+        df = df.sort_values(by = 'residual', ascending = True)
+        z = [ ]
+        for i in range(len(df)):
+            value = (i + 1 - a) / (len(df) + 1 - 2 * a)
+            z.append(stats.norm.ppf(value))
+        df['quantile'] = z
 
+        residual = np.array(df['residual'])
+        z = np.array(df['quantile'])
+        coef = np.dot(residual, z.transpose()) / np.dot(z, z.transpose())
+        line = np.arange(min(df['quantile']) - 0.1, max(df['quantile']) + 0.1, (max(df['quantile']) - min(df['quantile']) + 0.2) / 100)
+        line = np.array(line)
+        line = pd.DataFrame({'x' : line, 'y' : coef * line})
+        line = alt.Chart(line).mark_line().encode(x = 'x', y = 'y')
+        chart = alt.Chart(df, title = 'Normal plot').mark_point().encode(x = 'quantile', y = 'residual', tooltip = ['index'])
+        chart.encoding.x.title = 'Quantile'
+        chart.encoding.y.title = 'Residual'
+        return line + chart
 
-
-
-
+    def normal_test(self):
+        residue = [ ]
+        X = np.array(self.X)
+        for i in range(len(self.df)):
+            residue.append(self.y.loc[i] - np.dot(self.coef, X.transpose())[i])
+        residue = np.array(residue)
+        print('{0: <30}     {1: <20}     {2: <20}'.format('Test', 'Test Statistic', 'Pr'))
+        stat, p = stats.shapiro(residue)
+        print('{0: <30}     {1: <20}     {2: <20}'.format('Shapiro-Wilk', "{0:.4f}".format(stat), "{0:.4f}".format(p)))
+        stat, p = stats.kstest(residue, 'norm')
+        print('{0: <30}     {1: <20}     {2: <20}'.format('Kolmogorov-Smirnov', "{0:.4f}".format(stat), "{0:.4f}".format(p)))
+        stat, p = stats.normaltest(residue)
+        print('{0: <30}     {1: <20}     {2: <20}'.format('D’Agostino’s K^2', "{0:.4f}".format(stat), "{0:.4f}".format(p)))
