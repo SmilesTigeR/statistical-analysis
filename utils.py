@@ -2,8 +2,6 @@ import numpy as np
 from scipy import stats
 import math
 import pandas as pd
-# from statsmodels.graphics.gofplots import qqplot
-# import matplotlib.pyplot as plt
 import altair as alt
 
 # design for dataframe
