@@ -12,11 +12,16 @@ class LinearRegression:
         self.fit_intercept = fit_intercept
 
     def fit(self, col_X, col_y, categorical = None, interaction = None, ascending = True):
-        self.X = self.df[col_X]
-        self.y = self.df[col_y]
+        self.columns  = { }
+        self.columns['x'] = [ ]
+        self.columns['y'] = col_y
+
+        if self.fit_intercept is True:
+            self.df['Intercept'] = [1] * len(self.df)
+            self.columns.get('x').append('Intercept')
 
         if categorical is not None:
-            self.X = self.X.drop(categorical, axis = 1)
+            self.df = self.df.drop(categorical, axis = 1)
             for cat in categorical:
                 values = self.df[cat].unique()
                 if ascending is False:
@@ -29,7 +34,11 @@ class LinearRegression:
                         else:
                             temp.append(0)
                     col = cat + str(values[i])
-                    self.X[col] = temp
+                    self.df[col] = temp
+                    self.columns.get('x').append(col)
+        else:
+            for col in col_X:
+                self.columns.get('x').append(col)
 
         if interaction is not None:
             for inter in interaction:
@@ -48,7 +57,8 @@ class LinearRegression:
                                     else:
                                         temp.append(0)
                                 col = inter[0] + str(col_1[i]) + '_' + inter[1] + str(col_2[j])
-                                self.X[col] = temp
+                                self.df[col] = temp
+                                self.columns.get('x').append(col)
                 else:
                     if inter[0] in categorical and inter[1] not in categorical:
                         cat = inter[0]
@@ -68,14 +78,9 @@ class LinearRegression:
                                 temp.append(0)
                         col = cat + str(cols[i]) + con
                         self.df[col] = temp
+                        self.columns.get('x').append(col)
 
-        if self.fit_intercept is True:
-            self.X['Intercept'] = [1] * len(self.df)
-            col = self.X.columns.tolist()
-            col = col[-1 : ] + col[ : -1]
-            self.X = self.X[col]
-
-        X = self.X
+        X = self.df[self.columns.get('x')]
         X = np.array(X)
 
         y = self.df[col_y]
@@ -93,70 +98,92 @@ class LinearRegression:
         self.param['Reg S.S.'] = TOTAL_SS - RES_SS
         self.param['Total S.S.'] = TOTAL_SS
 
-        self.sigma = math.sqrt(RES_SS / (len(self.df) - len(self.X.columns.values.tolist())))
+        self.sigma = math.sqrt(RES_SS / (len(self.df) - len(self.columns.get('x'))))
         self.r2 = 1 - RES_SS/TOTAL_SS
         self.std = np.linalg.inv(np.dot(np.transpose(X), X)) * (self.sigma)**2
         return self
 
     def predict(self, X):
-        if self.fit_intercept is True:
-            X = np.c_[np.ones(len(X)), np.array(X)]
-        else:
-            X = np.array(X)
+        TEMP = [ ]
+        for i in range(len(X)):
+            if type(X[i]) == dict:
+                temp = []
+                for col in self.columns.get('x'):
+                    if X[i].get(col) is not None:
+                        temp.append(X[i].get(col))
+                    else:
+                        temp.append(0)
+                TEMP.append(temp)
+            else:
+                TEMP.append(X[i])
+        X = np.array(TEMP)
         return np.dot(self.coef, X.transpose())
 
     def change_sigma(self, sigma):
         self.sigma = sigma
-        self.std = np.linalg.inv(np.dot(np.transpose(self.X), self.X)) * (self.sigma) ** 2
+        X = np.array(self.df[self.columns.get('x')])
+        self.std = np.linalg.inv(np.dot(np.transpose(X), X)) * (self.sigma) ** 2
         return self
 
     def hypothesis_testing(self, col_X, col_y):
         C = [ ]
         for i in range(len(col_X)):
-            temp = [ ]
-            for col in self.X.columns.values.tolist():
-                if col_X[i].get(col) is not None:
-                    temp.append(col_X[i].get(col))
-                else:
-                    temp.append(0)
-            C.append(temp)
+            if type(col_X[i]) == dict:
+                temp = [ ]
+                for col in self.columns.get('x'):
+                    if col_X[i].get(col) is not None:
+                        temp.append(col_X[i].get(col))
+                    else:
+                        temp.append(0)
+                C.append(temp)
+            else:
+                C.append(col_X[i])
         C = np.array(C)
         d = np.array(col_y)
         test_stat = np.dot(np.transpose(np.dot(C, self.coef.transpose()) - d), np.dot(np.linalg.inv(np.dot(C, np.dot(self.std / self.sigma ** 2, C.transpose()))), (np.dot(C, self.coef.transpose()) - d)))/(np.linalg.matrix_rank(C) * self.sigma ** 2)
-        p_value = 1 - stats.f.cdf(test_stat, np.linalg.matrix_rank(C), len(self.df) - len(self.X.columns.values.tolist()))
+        p_value = 1 - stats.f.cdf(test_stat, np.linalg.matrix_rank(C), len(self.df) - len(self.columns.get('x')))
         print('Test statistic:', test_stat)
         print('Pr:', p_value)
 
     def predict_interval(self, X, alpha = 0.05, mode = 'individual'):
-        if self.fit_intercept is True:
-            X = np.c_[np.ones(len(X)), np.array(X)]
-        else:
-            X = np.array(X)
+        TEMP = []
+        for i in range(len(X)):
+            if type(X[i]) == dict:
+                temp = []
+                for col in self.columns.get('x'):
+                    if X[i].get(col) is not None:
+                        temp.append(X[i].get(col))
+                    else:
+                        temp.append(0)
+                TEMP.append(temp)
+            else:
+                TEMP.append(X[i])
+        X = np.array(TEMP)
 
         return_list = [ ]
         for i in range(len(X)):
             std = np.dot(X[i], np.dot(self.std, X[i].transpose())) / self.sigma ** 2
             est = np.dot(X[i], self.coef.transpose())
             if mode == 'individual':
-                return_list.append([est - stats.t.ppf(1 - alpha / 2, len(self.df) - len(self.X.columns) - self.fit_intercept) * self.sigma * math.sqrt(1 + std),
-                                    est + stats.t.ppf(1 - alpha / 2, len(self.df) - len(self.X.columns) - self.fit_intercept) * self.sigma * math.sqrt(1 + std)])
+                return_list.append([est - stats.t.ppf(1 - alpha / 2, len(self.df) - len(self.columns.get('x')) - self.fit_intercept) * self.sigma * math.sqrt(1 + std),
+                                    est + stats.t.ppf(1 - alpha / 2, len(self.df) - len(self.columns.get('x')) - self.fit_intercept) * self.sigma * math.sqrt(1 + std)])
             elif mode == 'mean':
-                return_list.append([est - stats.t.ppf(1 - alpha / 2, len(self.df) - len(self.X.columns) - self.fit_intercept) * self.sigma * math.sqrt(std),
-                                    est + stats.t.ppf(1 - alpha / 2, len(self.df) - len(self.X.columns) - self.fit_intercept) * self.sigma * math.sqrt(std)])
+                return_list.append([est - stats.t.ppf(1 - alpha / 2, len(self.df) - len(self.columns.get('x')) - self.fit_intercept) * self.sigma * math.sqrt(std),
+                                    est + stats.t.ppf(1 - alpha / 2, len(self.df) - len(self.columns.get('x')) - self.fit_intercept) * self.sigma * math.sqrt(std)])
         return return_list
 
     def lack_of_fit(self, result = True, epsilon = 1e-10):
         lack_fit = {}
-        for i in range(len(self.X)):
+        for i in range(len(self.df)):
             temp = []
-            for col in self.X.columns.values.tolist():
-                temp.append(self.X[col].loc[i])
+            for col in self.columns.get('x'):
+                temp.append(self.df[col].loc[i])
             temp = tuple(temp)
             if lack_fit.get(temp) is None:
-                lack_fit[temp] = [self.y.loc[i]]
+                lack_fit[temp] = [self.df[self.columns.get('y')].loc[i]]
 
             else:
-                lack_fit.get(temp).append(self.y.loc[i])
+                lack_fit.get(temp).append(self.df[self.columns.get('y')].loc[i])
 
         pure_error = 0
         for key in lack_fit.keys():
@@ -165,59 +192,56 @@ class LinearRegression:
                 pure_error += (lack_fit.get(key)[i] - mean) ** 2
 
         if result is False:
-            return (self.param['Res S.S.'] - pure_error) / (len(lack_fit) - len(self.X.columns) - self.fit_intercept)
+            return (self.param['Res S.S.'] - pure_error) / (len(lack_fit) - len(self.columns.get('x')) - self.fit_intercept)
 
         else:
             if pure_error - self.param['Res S.S.'] > epsilon or pure_error - self.param['Res S.S.'] < - epsilon:
-                test_stat = ((self.param['Res S.S.'] - pure_error) / (len(lack_fit) - len(self.X.columns) - self.fit_intercept)) / (pure_error / (len(self.df) - len(lack_fit)))
+                test_stat = ((self.param['Res S.S.'] - pure_error) / (len(lack_fit) - len(self.columns.get('x')) - self.fit_intercept)) / (pure_error / (len(self.df) - len(lack_fit)))
                 print('{0: <12}        {1: <10}'.format('Source', 'Sum of Square'))
                 print('{0: <12}        {1: <10}'.format('Lack of Fit', "{0:.4f}".format(self.param['Res S.S.'] - pure_error)))
                 print('{0: <12}        {1: <10}'.format('Pure Error', "{0:.4f}".format(pure_error)))
                 print('F-value:', test_stat)
-                print('Pr(Lack of Fit):', 1 - stats.f.cdf(test_stat, len(lack_fit) - len(self.X.columns) - self.fit_intercept, len(self.df) - len(lack_fit)))
+                print('Pr(Lack of Fit):', 1 - stats.f.cdf(test_stat, len(lack_fit) - len(self.columns.get('x')) - self.fit_intercept, len(self.df) - len(lack_fit)))
                 print('')
             else:
                 print('The lack of fit cannot be measured as there are no repeated records')
 
     def summary(self):
-        columns = self.X.columns.values.tolist()
-        length = len(self.df) - len(columns)
-
         print('{0: <15}     {1: <15}     {2: <15}'.format('Factor', 'Coefficient', 'Pr(|t|>0)'))
-        for i in range(len(columns)):
-            print('{0: <15}     {1: <15}     {2: <15}'.format(columns[i], "{0:.4f}".format(self.coef[i]), "{0:.4f}".format(2 * (1 - stats.t.cdf(abs(self.coef[i]) / math.sqrt(self.std[i][i]), length)))))
+        for i in range(len(self.columns.get('x'))):
+            print('{0: <15}     {1: <15}     {2: <15}'.format(self.columns.get('x')[i], "{0:.4f}".format(self.coef[i]), "{0:.4f}".format(2 * (1 - stats.t.cdf(abs(self.coef[i]) / math.sqrt(self.std[i][i]), len(self.df) - len(self.columns.get('x')))))))
         print('------------------------------------------------------------')
         print('{0: <10}        {1: <10}'.format('Source', 'Sum of Square'))
         print('{0: <10}        {1: <10}'.format('Total S.S.', "{0:.4f}".format(self.param['Total S.S.'])))
         print('{0: <10}        {1: <10}'.format('Reg S.S.', "{0:.4f}".format(self.param['Reg S.S.'])))
         print('{0: <10}        {1: <10}'.format('Res S.S.', "{0:.4f}".format(self.param['Res S.S.'])))
-        test_stat = (self.param['Reg S.S.'] / (len(self.X.columns) - self.fit_intercept)) / (self.param['Res S.S.'] / (len(self.df) - len(self.X.columns)))
+        test_stat = (self.param['Reg S.S.'] / (len(self.columns.get('x')) - self.fit_intercept)) / (self.param['Res S.S.'] / (len(self.df) - len(self.columns.get('x'))))
         print('F-value:', test_stat)
-        print('Pr(F):', 1 - stats.f.cdf(test_stat, len(self.X.columns) - self.fit_intercept, len(self.df) - len(self.X.columns)))
+        print('Pr(F):', 1 - stats.f.cdf(test_stat, len(self.columns.get('x')) - self.fit_intercept, len(self.df) - len(self.columns.get('x'))))
         print('------------------------------------------------------------')
         print('R-squared:', self.r2)
-        print('Adjusted R-squared:', (1 - (self.param['Res S.S.'] / (len(self.df) - len(self.X.columns))) / (self.param['Total S.S.'] / (len(self.df) - self.fit_intercept))))
-        print('AIC:', len(self.df) * math.log(self.param['Res S.S.'] / len(self.df)) + 2 * len(self.X.columns))
-        print('BIC:', len(self.df) * math.log(self.param['Res S.S.'] / len(self.df)) + math.log(len(self.df)) * len(self.X.columns))
+        print('Adjusted R-squared:', (1 - (self.param['Res S.S.'] / (len(self.df) - len(self.columns.get('x')))) / (self.param['Total S.S.'] / (len(self.df) - self.fit_intercept))))
+        print('AIC:', len(self.df) * math.log(self.param['Res S.S.'] / len(self.df)) + 2 * len(self.columns.get('x')))
+        print('BIC:', len(self.df) * math.log(self.param['Res S.S.'] / len(self.df)) + math.log(len(self.df)) * len(self.columns.get('x')))
         print(' ')
 
     def residual(self, type = 'residual'):
         residual = []
-        X = np.array(self.X)
+        X = np.array(self.df[self.columns.get('x')])
 
         if type == 'residual':
             for i in range(len(self.df)):
-                residual.append(self.y.loc[i] - np.dot(self.coef, X.transpose())[i])
+                residual.append(self.df[self.columns.get('y')].loc[i] - np.dot(self.coef, X.transpose())[i])
             return np.array(residual)
         elif type == 'standardised':
             for i in range(len(self.df)):
-                residual.append(self.y.loc[i] - np.dot(self.coef, X.transpose())[i])
+                residual.append(self.df[self.columns.get('y')].loc[i] - np.dot(self.coef, X.transpose())[i])
             residual = np.array(residual)
             return residual / math.sqrt(np.dot(residual, residual.transpose()) / (len(self.df) - 1))
 
     def residual_plot(self):
         residual = self.residual('standardised')
-        X = np.array(self.X)
+        X = np.array(self.df[self.columns.get('x')])
         y = np.dot(self.coef, X.transpose())
         df = pd.DataFrame({'residual' : residual,
                            'predict' : y})
@@ -263,9 +287,9 @@ class LinearRegression:
 
     def normal_test(self):
         residue = [ ]
-        X = np.array(self.X)
+        X = np.array(self.df[self.columns.get('x')])
         for i in range(len(self.df)):
-            residue.append(self.y.loc[i] - np.dot(self.coef, X.transpose())[i])
+            residue.append(self.df[self.columns.get('y')].loc[i] - np.dot(self.coef, X.transpose())[i])
         residue = np.array(residue)
         print('{0: <30}     {1: <20}     {2: <20}'.format('Test', 'Test Statistic', 'Pr'))
         stat, p = stats.shapiro(residue)
