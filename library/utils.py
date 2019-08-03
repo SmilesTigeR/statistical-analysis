@@ -21,7 +21,9 @@ class LinearRegression:
             self.columns.get('x').append('Intercept')
 
         if categorical is not None:
-            self.df = self.df.drop(categorical, axis = 1)
+            for col in col_X:
+                if col not in categorical:
+                    self.columns.get('x').append(col)
             for cat in categorical:
                 values = self.df[cat].unique()
                 if ascending is False:
@@ -33,12 +35,13 @@ class LinearRegression:
                             temp.append(1)
                         else:
                             temp.append(0)
-                    col = cat + str(values[i])
+                    col = cat + '_' + str(values[i])
                     self.df[col] = temp
                     self.columns.get('x').append(col)
         else:
             for col in col_X:
                 self.columns.get('x').append(col)
+
 
         if interaction is not None:
             for inter in interaction:
@@ -56,7 +59,7 @@ class LinearRegression:
                                         temp.append(1)
                                     else:
                                         temp.append(0)
-                                col = inter[0] + str(col_1[i]) + '_' + inter[1] + str(col_2[j])
+                                col = inter[0] + '_' + str(col_1[i]) + '_' + inter[1] + '_'+ str(col_2[j])
                                 self.df[col] = temp
                                 self.columns.get('x').append(col)
                 else:
@@ -76,9 +79,11 @@ class LinearRegression:
                                 temp.append(self.df[con].loc[i])
                             else:
                                 temp.append(0)
-                        col = cat + str(cols[i]) + con
+                        col = cat + str(cols[i]) + '_' + con
                         self.df[col] = temp
                         self.columns.get('x').append(col)
+
+        self.df = self.df.drop(categorical, axis=1)
 
         X = self.df[self.columns.get('x')]
         X = np.array(X)
@@ -172,7 +177,7 @@ class LinearRegression:
                                     est + stats.t.ppf(1 - alpha / 2, len(self.df) - len(self.columns.get('x')) - self.fit_intercept) * self.sigma * math.sqrt(std)])
         return return_list
 
-    def lack_of_fit(self, result = True, epsilon = 1e-10):
+    def lack_of_fit(self, result = True):
         lack_fit = {}
         for i in range(len(self.df)):
             temp = []
@@ -195,7 +200,7 @@ class LinearRegression:
             return (self.param['Res S.S.'] - pure_error) / (len(lack_fit) - len(self.columns.get('x')) - self.fit_intercept)
 
         else:
-            if pure_error - self.param['Res S.S.'] > epsilon or pure_error - self.param['Res S.S.'] < - epsilon:
+            if len(self.df) != len(lack_fit):
                 test_stat = ((self.param['Res S.S.'] - pure_error) / (len(lack_fit) - len(self.columns.get('x')) - self.fit_intercept)) / (pure_error / (len(self.df) - len(lack_fit)))
                 print('{0: <12}        {1: <10}'.format('Source', 'Sum of Square'))
                 print('{0: <12}        {1: <10}'.format('Lack of Fit', "{0:.4f}".format(self.param['Res S.S.'] - pure_error)))
@@ -207,9 +212,9 @@ class LinearRegression:
                 print('The lack of fit cannot be measured as there are no repeated records')
 
     def summary(self):
-        print('{0: <15}     {1: <15}     {2: <15}'.format('Factor', 'Coefficient', 'Pr(|t|>0)'))
+        print('{0: <50}     {1: <15}     {2: <15}'.format('Factor', 'Coefficient', 'Pr(|t|>0)'))
         for i in range(len(self.columns.get('x'))):
-            print('{0: <15}     {1: <15}     {2: <15}'.format(self.columns.get('x')[i], "{0:.4f}".format(self.coef[i]), "{0:.4f}".format(2 * (1 - stats.t.cdf(abs(self.coef[i]) / math.sqrt(self.std[i][i]), len(self.df) - len(self.columns.get('x')))))))
+            print('{0: <50}     {1: <15}     {2: <15}'.format(self.columns.get('x')[i], "{0:.4f}".format(self.coef[i]), "{0:.4f}".format(2 * (1 - stats.t.cdf(abs(self.coef[i]) / math.sqrt(self.std[i][i]), len(self.df) - len(self.columns.get('x')))))))
         print('------------------------------------------------------------')
         print('{0: <10}        {1: <10}'.format('Source', 'Sum of Square'))
         print('{0: <10}        {1: <10}'.format('Total S.S.', "{0:.4f}".format(self.param['Total S.S.'])))
