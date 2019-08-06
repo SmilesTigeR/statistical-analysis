@@ -229,12 +229,12 @@ class LinearRegression:
             else:
                 print('The lack of fit cannot be measured as there are no repeated records')
 
-    def summary(self, vif = False):
-        if vif is True:
+    def summary(self, VIF = False):
+        if VIF is True:
             vif = ["{0:.4f}".format(self.vif(col)) if col != 'Intercept' else '' for col in self.columns.get('x')]
         else:
             vif = [''] * len(self.columns.get('x'))
-        print('{0: <50}     {1: <15}     {2: <15}     {3: <15}'.format('Factor', 'Coefficient', 'Pr(|t|>0)', 'VIF' if vif is True else ''))
+        print('{0: <50}     {1: <15}     {2: <15}     {3: <15}'.format('Factor', 'Coefficient', 'Pr(|t|>0)', 'VIF' if VIF is True else ''))
         for i in range(len(self.columns.get('x'))):
             print('{0: <50}     {1: <15}     {2: <15}     {3: <15}'.format(self.columns.get('x')[i], "{0:.4f}".format(self.coef[i]), "{0:.4f}".format(2 * (1 - stats.t.cdf(abs(self.coef[i]) / math.sqrt(self.std[i][i]), len(self.df) - len(self.columns.get('x'))))), vif[i]))
         print('------------------------------------------------------------------------------------------------------------------------')
