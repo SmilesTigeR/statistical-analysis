@@ -3,8 +3,6 @@ from scipy import stats
 from .regression import LinearRegression
 
 def ForwardSelection(df, col_X, col_y, alpha = 0.05, detail = True):
-    if 'Intercept' in df.columns:
-        df = df.drop('Intercept', axis = 1)
     columns = [ ]
     model = LinearRegression(df)
     model.fit(columns, col_y)
@@ -16,6 +14,7 @@ def ForwardSelection(df, col_X, col_y, alpha = 0.05, detail = True):
             if col_X[i] not in columns:
                 cols = columns[ : ]
                 cols.append(col_X[i])
+                model.df = df[cols + [col_y]]
                 model.fit(cols, col_y)
                 if res_min is None or res_min > model.param['Res S.S.']:
                     res_min = model.param['Res S.S.']
@@ -23,7 +22,7 @@ def ForwardSelection(df, col_X, col_y, alpha = 0.05, detail = True):
         test_stat = (RES_SS - res_min) / (res_min / (len(df) - len(columns) - 2))
         p_value = 1 - stats.f.cdf(test_stat, 1, len(df) - len(columns) - 2)
         if detail is True or p_value > alpha or len(col_X) == len(columns) + 1:
-            print('Variable:', ', '.join(columns))
+            print('Variable in model:', ', '.join(columns))
             print('{0: <50}     {1: <30}     {2: <15}'.format('Variable Entered', 'Res S.S. before Entered',
                                                               'Res S.S. after Entered'))
             print('{0: <50}     {1: <30}     {2: <15}'.format(col_X[index], "{0:.4f}".format(RES_SS), "{0:.4f}".format(res_min)))
@@ -40,6 +39,8 @@ def ForwardSelection(df, col_X, col_y, alpha = 0.05, detail = True):
 def BackwardSelection(df, col_X, col_y, alpha = 0.05, detail = True):
     if 'Intercept' in df.columns:
         df = df.drop('Intercept', axis = 1)
+    if 'Intercept' in col_X:
+        col_X.remove('Intercept')
     model = LinearRegression(df)
     model.fit(col_X, col_y)
     RES_SS = model.param['Res S.S.']
@@ -49,6 +50,7 @@ def BackwardSelection(df, col_X, col_y, alpha = 0.05, detail = True):
         for i in range(len(col_X)):
             cols = col_X[ : ]
             cols.pop(i)
+            model.df = df[cols + [col_y]]
             model.fit(cols, col_y)
             if res_min is None or res_min > model.param['Res S.S.']:
                 res_min = model.param['Res S.S.']
@@ -56,7 +58,7 @@ def BackwardSelection(df, col_X, col_y, alpha = 0.05, detail = True):
         test_stat = (res_min - RES_SS) / (RES_SS / (len(df) - len(col_X) - 1))
         p_value = 1 - stats.f.cdf(test_stat, 1, len(df) - len(col_X) - 1)
         if detail is True or p_value <= alpha or len(col_X) == 1:
-            print('Variable:', ', '.join(col_X))
+            print('Variable in model:', ', '.join(col_X))
             print('{0: <50}     {1: <30}     {2: <15}'.format('Variable Removed', 'Res S.S. before Removal',
                                                               'Res S.S. after Removal'))
             print('{0: <50}     {1: <30}     {2: <15}'.format(col_X[index], "{0:.4f}".format(RES_SS), "{0:.4f}".format(res_min)))
@@ -73,6 +75,8 @@ def BackwardSelection(df, col_X, col_y, alpha = 0.05, detail = True):
 def StepwiseSelection(df, col_X, col_y, in_alpha = 0.05, out_alpha = 0.05, detail = True):
     if 'Intercept' in df.columns:
         df = df.drop('Intercept', axis = 1)
+    if 'Intercept' in col_X:
+        col_X.remove('Intercept')
 
     columns = [ ]
     model = LinearRegression(df)
@@ -85,6 +89,7 @@ def StepwiseSelection(df, col_X, col_y, in_alpha = 0.05, out_alpha = 0.05, detai
             if col_X[i] not in columns:
                 cols = columns[ : ]
                 cols.append(col_X[i])
+                model.df = df[cols + [col_y]]
                 model.fit(cols, col_y)
                 if res is None or res > model.param['Res S.S.']:
                     res = model.param['Res S.S.']
@@ -92,7 +97,7 @@ def StepwiseSelection(df, col_X, col_y, in_alpha = 0.05, out_alpha = 0.05, detai
         test_stat = (RES_SS - res) / (res / (len(df) - len(columns) - 2))
         p_value = 1 - stats.f.cdf(test_stat, 1, len(df) - len(columns) - 2)
         if detail is True or p_value > in_alpha or len(col_X) == len(columns) + 1:
-            print('Variable:', ', '.join(columns))
+            print('Variable in model:', ', '.join(columns))
             print('{0: <50}     {1: <30}     {2: <15}'.format('Variable Entered', 'Res S.S. before Entered',
                                                               'Res S.S. after Entered'))
             print('{0: <50}     {1: <30}     {2: <15}'.format(col_X[index], "{0:.4f}".format(RES_SS),
@@ -114,6 +119,7 @@ def StepwiseSelection(df, col_X, col_y, in_alpha = 0.05, out_alpha = 0.05, detai
                 index = 0
                 cols = columns[ : ]
                 cols.pop(i)
+                model.df = df[cols + [col_y]]
                 model.fit(cols, col_y)
                 if res is None or res < model.param['Res S.S.']:
                     res = model.param['Res S.S.']
@@ -121,7 +127,7 @@ def StepwiseSelection(df, col_X, col_y, in_alpha = 0.05, out_alpha = 0.05, detai
             test_stat = (res - RES_SS) / (RES_SS / (len(df) - len(columns) - 1))
             p_value = 1 - stats.f.cdf(test_stat, 1, len(df) - len(columns) - 1)
             if detail is True or p_value <= out_alpha:
-                print('Variable:', ', '.join(columns))
+                print('Variable in model:', ', '.join(columns))
                 print('{0: <50}     {1: <30}     {2: <15}'.format('Variable Removed', 'Res S.S. before Removal',
                                                                   'Res S.S. after Removal'))
                 print('{0: <50}     {1: <30}     {2: <15}'.format(columns[index], "{0:.4f}".format(RES_SS),
@@ -133,4 +139,3 @@ def StepwiseSelection(df, col_X, col_y, in_alpha = 0.05, out_alpha = 0.05, detai
 
             if p_value > out_alpha:
                 columns.pop(index)
-                break
