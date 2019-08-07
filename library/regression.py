@@ -3,96 +3,41 @@ from scipy import stats
 import math
 import pandas as pd
 import altair as alt
+from .design_matrix import design_matrix
 
-# design for dataframe
+# design for design matrix
 class LinearRegression:
 
-    def __init__(self, df, fit_intercept = True):
+    def __init__(self, df, intercept = True):
         self.df = df
-        self.fit_intercept = fit_intercept
+        self.intercept = intercept
 
-    def fit(self, col_X, col_y, categorical = [ ], interaction = [ ], ascending = True):
+    def fit(self, col_X, col_y, categorical = None, interaction = None, ascending = True):
         self.columns  = { }
-        self.columns['x'] = [ ]
         self.columns['y'] = col_y
-
-        if self.fit_intercept is True:
-            self.df['Intercept'] = np.ones(len(self.df))
-            self.columns.get('x').append('Intercept')
-
-        self.categorical = categorical
-        for col in col_X:
-            if col not in categorical:
-                self.columns.get('x').append(col)
-            else:
-                values = self.df[col].unique()
-                if ascending is False:
-                    values = values[::-1]
-                for i in range(len(values) - 1):
-                    temp = [ ]
-                    for j in range(len(self.df)):
-                        if self.df[col].loc[j] == values[i]:
-                            temp.append(1)
-                        else:
-                            temp.append(0)
-                    col_name = col + '_' + str(values[i])
-                    self.df[col_name] = temp
-                    self.columns.get('x').append(col_name)
-
-        for inter in interaction:
-            if inter[0] in categorical and inter[1] in categorical:
-                col_1 = self.df[inter[0]].unique()
-                col_2 = self.df[inter[1]].unique()
-                if ascending is False:
-                    col_1 = col_1[::-1]
-                    col_2 = col_2[::-1]
-                    for i in range(len(col_1) - 1):
-                        for j in range(len(col_2) - 1):
-                            temp = [ ]
-                            for k in range(len(self.df)):
-                                if self.df[inter[0]].loc[k] == col_1[i] and self.df[inter[1]].loc[k] == col_2[j]:
-                                    temp.append(1)
-                                else:
-                                    temp.append(0)
-                            col_name = inter[0] + '_' + str(col_1[i]) + '_' + inter[1] + '_'+ str(col_2[j])
-                            self.df[col_name] = temp
-                            self.columns.get('x').append(col_name)
-            else:
-                if inter[0] in categorical and inter[1] not in categorical:
-                    col_1 = inter[0]
-                    col_2 = inter[1]
-                else:
-                    col_1 = inter[1]
-                    col_2 = inter[0]
-                cols = self.df[col_1].unique()
-                if ascending is False:
-                    cols = cols[::-1]
-                for i in range(len(cols) - 1):
-                    temp = [ ]
-                    for j in range(len(self.df)):
-                        if self.df[col_1].loc[j] == cols[i]:
-                            temp.append(self.df[col_2].loc[j])
-                        else:
-                            temp.append(0)
-                    col_name = col_1 + '_' + str(cols[i]) + '_' + col_2
-                    self.df[col_name] = temp
-                    self.columns.get('x').append(col_name)
-
-        self.df = self.df.drop(categorical, axis=1)
+        if self.intercept is True or categorical is not None:
+            self.df = self.df.copy()
+            self.df = design_matrix(self.df[col_X + [col_y]], intercept = self.intercept,
+                                    categorical = categorical, interaction = interaction, ascending = ascending)
+            self.columns['x'] = self.df.drop(col_y, axis = 1).columns.tolist()
+        else:
+            self.columns['x'] = col_X
 
         X = self.df[self.columns.get('x')]
         X = np.array(X)
 
         y = self.df[col_y]
         y = np.array(y)
+
         self.std = np.linalg.inv(np.dot(np.transpose(X), X))
-        self.coef = np.dot(self.std, np.dot(X.transpose(), y.transpose()))
+        xty = np.dot(X.transpose(), y.transpose())
+        self.coef = np.dot(self.std, xty)
         self.param = { }
         self.param['coef'] = self.coef
 
-        RES_SS = np.dot(y, np.transpose(y)) - np.dot(self.coef, np.dot(np.transpose(X), np.transpose(y)))
+        RES_SS = np.dot(y, np.transpose(y)) - np.dot(self.coef, xty)
         self.param['Res S.S.'] = RES_SS
-        if self.fit_intercept is True:
+        if self.intercept is True:
             TOTAL_SS = np.dot(y, (np.dot((np.identity(len(self.df)) - 1/len(self.df) * np.ones((len(self.df), len(self.df)))), y.transpose())))
         else:
             TOTAL_SS = np.dot(y.transpose(), y)
@@ -100,7 +45,6 @@ class LinearRegression:
         self.param['Total S.S.'] = TOTAL_SS
 
         self.sigma = math.sqrt(RES_SS / (len(self.df) - len(self.columns.get('x'))))
-        self.r2 = 1 - RES_SS/TOTAL_SS
         self.std = self.std * (self.sigma)**2
         return self
 
@@ -114,23 +58,22 @@ class LinearRegression:
         if col_X == 'Intercept':
             return None
         else:
-            X = self.columns.get('x')[ : ]
-            X.remove(col_X)
-            if self.fit_intercept is True:
-                X.remove('Intercept')
-            model = LinearRegression(self.df)
-            model.fit(X, col_X)
-            return model.param['Total S.S.'] / model.param['Res S.S.']
-            # X = self.df[self.columns.get('x')]
-            # X = X.drop(col_X, axis = 1)
-            # if self.fit_intercept is False:
-            #     X['Intercept'] = np.ones(len(X))
-            # X = np.array(X)
-            # y = np.array(self.df[self.columns.get('y')])
-            # coef = np.dot(np.linalg.inv(np.dot(np.transpose(X), X)), np.dot(X.transpose(), y.transpose()))
-            # RES_SS = np.dot(y, np.transpose(y)) - np.dot(coef, np.dot(np.transpose(X), np.transpose(y)))
-            # TOTAL_SS = np.dot(y, (np.dot((np.identity(len(self.df)) - 1 / len(self.df) * np.ones((len(self.df), len(self.df)))), y.transpose())))
-            # return TOTAL_SS / RES_SS
+            cols = self.columns.get('x')[ : ]
+            if self.intercept is False:
+                self.df['Intercept'] = np.ones(len(self.df))
+                cols.append('Intercept')
+            cols.remove(col_X)
+            X = self.df[cols]
+            X = np.array(X)
+            y = np.array(self.df[col_X])
+            xty = np.dot(X.transpose(), y.transpose())
+            coef = np.dot(np.linalg.inv(np.dot(np.transpose(X), X)), xty)
+            RES_SS = np.dot(y, np.transpose(y)) - np.dot(coef, xty)
+            TOTAL_SS = np.dot(y, (np.dot((np.identity(len(self.df)) - 1 / len(self.df) * np.ones((len(self.df), len(self.df)))), y.transpose())))
+            if self.intercept is False:
+                self.df = self.df.drop('Intercept', axis = 1)
+            return TOTAL_SS / RES_SS
+
     # http://web.vu.lt/mif/a.buteikis/wp-content/uploads/PE_Book/4-5-Multiple-collinearity.html
 
     def predict(self, X):
@@ -189,11 +132,11 @@ class LinearRegression:
             std = np.dot(X[i], np.dot(self.std, X[i].transpose())) / self.sigma ** 2
             est = np.dot(X[i], self.coef.transpose())
             if mode == 'individual':
-                return_list.append([est - stats.t.ppf(1 - alpha / 2, len(self.df) - len(self.columns.get('x')) - self.fit_intercept) * self.sigma * math.sqrt(1 + std),
-                                    est + stats.t.ppf(1 - alpha / 2, len(self.df) - len(self.columns.get('x')) - self.fit_intercept) * self.sigma * math.sqrt(1 + std)])
+                return_list.append([est - stats.t.ppf(1 - alpha / 2, len(self.df) - len(self.columns.get('x')) - self.intercept) * self.sigma * math.sqrt(1 + std),
+                                    est + stats.t.ppf(1 - alpha / 2, len(self.df) - len(self.columns.get('x')) - self.intercept) * self.sigma * math.sqrt(1 + std)])
             elif mode == 'mean':
-                return_list.append([est - stats.t.ppf(1 - alpha / 2, len(self.df) - len(self.columns.get('x')) - self.fit_intercept) * self.sigma * math.sqrt(std),
-                                    est + stats.t.ppf(1 - alpha / 2, len(self.df) - len(self.columns.get('x')) - self.fit_intercept) * self.sigma * math.sqrt(std)])
+                return_list.append([est - stats.t.ppf(1 - alpha / 2, len(self.df) - len(self.columns.get('x')) - self.intercept) * self.sigma * math.sqrt(std),
+                                    est + stats.t.ppf(1 - alpha / 2, len(self.df) - len(self.columns.get('x')) - self.intercept) * self.sigma * math.sqrt(std)])
         return return_list
 
     def lack_of_fit(self, result = True):
@@ -215,16 +158,16 @@ class LinearRegression:
                 pure_error += (lack_fit.get(key)[i] - mean) ** 2
 
         if result is False:
-            return (self.param['Res S.S.'] - pure_error) / (len(lack_fit) - len(self.columns.get('x')) - self.fit_intercept)
+            return (self.param['Res S.S.'] - pure_error) / (len(lack_fit) - len(self.columns.get('x')) - self.intercept)
 
         else:
             if len(self.df) != len(lack_fit):
-                test_stat = ((self.param['Res S.S.'] - pure_error) / (len(lack_fit) - len(self.columns.get('x')) - self.fit_intercept)) / (pure_error / (len(self.df) - len(lack_fit)))
+                test_stat = ((self.param['Res S.S.'] - pure_error) / (len(lack_fit) - len(self.columns.get('x')) - self.intercept)) / (pure_error / (len(self.df) - len(lack_fit)))
                 print('{0: <12}        {1: <10}'.format('Source', 'Sum of Square'))
                 print('{0: <12}        {1: <10}'.format('Lack of Fit', "{0:.4f}".format(self.param['Res S.S.'] - pure_error)))
                 print('{0: <12}        {1: <10}'.format('Pure Error', "{0:.4f}".format(pure_error)))
                 print('F-value:', test_stat)
-                print('Pr(Lack of Fit):', 1 - stats.f.cdf(test_stat, len(lack_fit) - len(self.columns.get('x')) - self.fit_intercept, len(self.df) - len(lack_fit)))
+                print('Pr(Lack of Fit):', 1 - stats.f.cdf(test_stat, len(lack_fit) - len(self.columns.get('x')) - self.intercept, len(self.df) - len(lack_fit)))
                 print('')
             else:
                 print('The lack of fit cannot be measured as there are no repeated records')
@@ -242,12 +185,12 @@ class LinearRegression:
         print('{0: <10}        {1: <10}'.format('Total S.S.', "{0:.4f}".format(self.param['Total S.S.'])))
         print('{0: <10}        {1: <10}'.format('Reg S.S.', "{0:.4f}".format(self.param['Reg S.S.'])))
         print('{0: <10}        {1: <10}'.format('Res S.S.', "{0:.4f}".format(self.param['Res S.S.'])))
-        test_stat = (self.param['Reg S.S.'] / (len(self.columns.get('x')) - self.fit_intercept)) / (self.param['Res S.S.'] / (len(self.df) - len(self.columns.get('x'))))
+        test_stat = (self.param['Reg S.S.'] / (len(self.columns.get('x')) - self.intercept)) / (self.param['Res S.S.'] / (len(self.df) - len(self.columns.get('x'))))
         print('F-value:', test_stat)
-        print('Pr(F):', 1 - stats.f.cdf(test_stat, len(self.columns.get('x')) - self.fit_intercept, len(self.df) - len(self.columns.get('x'))))
+        print('Pr(F):', 1 - stats.f.cdf(test_stat, len(self.columns.get('x')) - self.intercept, len(self.df) - len(self.columns.get('x'))))
         print('------------------------------------------------------------------------------------------------------------------------')
-        print('R-squared:', self.r2)
-        print('Adjusted R-squared:', (1 - (self.param['Res S.S.'] / (len(self.df) - len(self.columns.get('x')))) / (self.param['Total S.S.'] / (len(self.df) - self.fit_intercept))))
+        print('R-squared:', 1 - self.param['Res S.S.'] / self.param['Total S.S.'])
+        print('Adjusted R-squared:', (1 - (self.param['Res S.S.'] / (len(self.df) - len(self.columns.get('x')))) / (self.param['Total S.S.'] / (len(self.df) - self.intercept))))
         print('AIC:', len(self.df) * math.log(self.param['Res S.S.'] / len(self.df)) + 2 * len(self.columns.get('x')))
         print('BIC:', len(self.df) * math.log(self.param['Res S.S.'] / len(self.df)) + math.log(len(self.df)) * len(self.columns.get('x')))
         print(' ')
@@ -301,12 +244,10 @@ class LinearRegression:
 
         residual = np.array(df['residual'])
         z = np.array(df['quantile'])
-        # coef = np.dot(residual, z.transpose()) / np.dot(z, z.transpose())
-        model = LinearRegression(df, fit_intercept = False)
-        model.fit(['quantile'], 'residual')
+        coef = np.dot(residual, z.transpose()) / np.dot(z, z.transpose())
         line = np.arange(min(df['quantile']) - 0.1, max(df['quantile']) + 0.1, (max(df['quantile']) - min(df['quantile']) + 0.2) / 100)
         line = np.array(line)
-        line = pd.DataFrame({'x' : line, 'y' : model.coef * line})
+        line = pd.DataFrame({'x' : line, 'y' : coef * line})
         line = alt.Chart(line).mark_line().encode(x = 'x', y = 'y')
         chart = alt.Chart(df, title = 'Normal plot').mark_point().encode(x = 'quantile', y = 'residual', tooltip = ['index'])
         chart.encoding.x.title = 'Quantile'
