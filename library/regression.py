@@ -12,13 +12,13 @@ class LinearRegression:
         self.df = df
         self.intercept = intercept
 
-    def fit(self, col_X, col_y, categorical = None, interaction = None, ascending = True):
+    def fit(self, col_X, col_y, category = None, interaction = None, ascending = True):
         self.columns  = { }
         self.columns['y'] = col_y
-        if self.intercept is True or categorical is not None:
+        if self.intercept is True or category is not None:
             self.df = self.df.copy()
             self.df = design_matrix(self.df[col_X + [col_y]], intercept = self.intercept,
-                                    categorical = categorical, interaction = interaction, ascending = ascending)
+                                    category = category, interaction = interaction, ascending = ascending)
             self.columns['x'] = self.df.drop(col_y, axis = 1).columns.tolist()
         else:
             self.columns['x'] = col_X
