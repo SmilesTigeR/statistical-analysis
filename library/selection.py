@@ -1,6 +1,12 @@
 import numpy as np
+import pandas as pd
 from scipy import stats
 from .regression import LinearRegression
+from sklearn.linear_model import Lasso
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+import matplotlib.pyplot as plt
 
 def ForwardSelection(df, col_X, col_y, alpha = 0.05, detail = True):
     columns = [ ]
@@ -139,3 +145,37 @@ def StepwiseSelection(df, col_X, col_y, in_alpha = 0.05, out_alpha = 0.05, detai
 
             if p_value > out_alpha:
                 columns.pop(index)
+
+def Lasso_plot(X, y, alphas = np.logspace(-4, 0, 30), split_size = 0.25):
+    plt.figure(figsize = (15, 8))
+    mse = None
+    index = 0
+    coefs = [ ]
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=split_size)
+    for i in range(len(alphas)):
+        model = Lasso(alphas[i]).fit(X_train, y_train)
+        coefs.append(model.coef_)
+        if mse is None or mse > model.score(X_test, y_test):
+            mse = model.score(X_test, y_test)
+            index = i
+    coefs = np.array(coefs)
+    coefs = coefs.transpose()
+    for i in range(len(coefs)):
+        plt.plot(alphas, coefs[i])
+    plt.legend(tuple(X.columns.values.tolist()), loc='upper right')
+    plt.axvline(x=alphas[index], linestyle='--')
+    plt.axhline(y = 0, color = 'black')
+    plt.show()
+
+def Importance(df, col_X, col_y, category = None, ntree = 100):
+    if category is not None:
+        df = df.copy()
+        le = LabelEncoder()
+        for col in category:
+            df[col] = le.fit_transform(df[col])
+    model = RandomForestRegressor(n_estimators = ntree).fit(df[col_X], df[col_y])
+    df = pd.DataFrame({'Features' : col_X,
+                       'Importance': model.feature_importances_})
+    df = df.sort_values(by = 'Importance', ascending = False)
+    return df
+
