@@ -165,6 +165,8 @@ def Lasso_plot(X, y, alphas = np.logspace(-4, 0, 30), split_size = 0.25):
     plt.legend(tuple(X.columns.values.tolist()), loc='upper right')
     plt.axvline(x=alphas[index], linestyle='--')
     plt.axhline(y = 0, color = 'black')
+    plt.xlabel('Alpha')
+    plt.ylabel('Coefficient')
     plt.show()
 
 def Importance(df, col_X, col_y, category = None, ntree = 100):
