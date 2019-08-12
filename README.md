@@ -1,8 +1,8 @@
 # Linear Regression
    hypothesis testing and residual analysis
 ## Library required
-   numpy
-   pandas
-   sklearn
-   matplotlab
+   numpy \n
+   pandas \n
+   sklearn \n
+   matplotlab \n
    altair
