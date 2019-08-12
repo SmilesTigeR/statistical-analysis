@@ -1,17 +1,16 @@
 import numpy as np
 import pandas as pd
 
-def design_matrix(df, intercept = True, categorical = None, interaction = None, ascending = True, copy = False):
-    if copy is True:
-        df = df.copy()
+def design_matrix(df, intercept = True, category = None, interaction = None, ascending = True):
+    df = df.copy()
     if intercept is True:
         df['Intercept'] = np.ones(len(df))
         columns = df.columns.tolist()
         columns = [columns[-1]] + columns[:-1]
         df = df[columns]
 
-    if categorical is not None:
-        for col in categorical:
+    if category is not None:
+        for col in category:
             if ascending is True:
                 df1 = pd.get_dummies(df[col], prefix=col)
                 df1 = df1.drop(df1.columns[len(df1.columns) - 1], axis=1)
@@ -21,7 +20,7 @@ def design_matrix(df, intercept = True, categorical = None, interaction = None, 
 
     if interaction is not None:
         for inter in interaction:
-            if inter[0] in categorical and inter[1] in categorical:
+            if inter[0] in category and inter[1] in category:
                 col_1 = df[inter[0]].unique()
                 col_2 = df[inter[1]].unique()
                 if ascending is False:
@@ -38,7 +37,7 @@ def design_matrix(df, intercept = True, categorical = None, interaction = None, 
                         col_name = inter[0] + '_' + str(col_1[i]) + '_' + inter[1] + '_' + str(col_2[j])
                         df[col_name] = temp
             else:
-                if inter[0] in categorical and inter[1] not in categorical:
+                if inter[0] in category and inter[1] not in category:
                     col_1 = inter[0]
                     col_2 = inter[1]
                 else:
@@ -57,7 +56,7 @@ def design_matrix(df, intercept = True, categorical = None, interaction = None, 
                     col_name = col_1 + '_' + str(cols[i]) + '_' + col_2
                     df[col_name] = temp
 
-    if categorical is not None:
-        df = df.drop(categorical, axis=1)
+    if category is not None:
+        df = df.drop(category, axis=1)
 
     return df
