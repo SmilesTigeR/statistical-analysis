@@ -1,7 +1,9 @@
 import numpy as np
 import pandas as pd
 
-def design_matrix(df, intercept = True, category = None, interaction = None, ascending = True):
+def design_matrix(df, columns = None, intercept = True, category = None, interaction = None, ascending = True):
+    if columns is not None:
+        df = df[columns]
     df = df.copy()
     if intercept is True:
         df['Intercept'] = np.ones(len(df))
@@ -12,17 +14,19 @@ def design_matrix(df, intercept = True, category = None, interaction = None, asc
     if category is not None:
         for col in category:
             if ascending is True:
-                df1 = pd.get_dummies(df[col], prefix=col)
+                df1 = pd.get_dummies(df[col].sort_values(), prefix=col)
                 df1 = df1.drop(df1.columns[len(df1.columns) - 1], axis=1)
             else:
-                df1 = pd.get_dummies(df[col], prefix=col, drop_first = True)
+                df1 = pd.get_dummies(df[col].sort_values(ascending = False), prefix=col, drop_first = True)
             df = pd.merge(df, df1, left_index = True, right_index = True)
 
     if interaction is not None:
         for inter in interaction:
             if inter[0] in category and inter[1] in category:
-                col_1 = df[inter[0]].unique()
-                col_2 = df[inter[1]].unique()
+                col_1 = df[inter[0]].unique().tolist()
+                col_1.sort()
+                col_2 = df[inter[1]].unique().tolist()
+                col_2.sort()
                 if ascending is False:
                     col_1 = col_1[::-1]
                     col_2 = col_2[::-1]
@@ -43,7 +47,8 @@ def design_matrix(df, intercept = True, category = None, interaction = None, asc
                 else:
                     col_1 = inter[1]
                     col_2 = inter[0]
-                cols = df[col_1].unique()
+                cols = df[col_1].unique().tolist()
+                cols.sort()
                 if ascending is False:
                     cols = cols[::-1]
                 for i in range(len(cols) - 1):
