@@ -3,7 +3,7 @@ from scipy import stats
 import math
 import pandas as pd
 import altair as alt
-from .design_matrix import design_matrix
+from .transformation import design_matrix
 
 # design for design matrix
 class LinearRegression:
@@ -77,19 +77,23 @@ class LinearRegression:
     # http://web.vu.lt/mif/a.buteikis/wp-content/uploads/PE_Book/4-5-Multiple-collinearity.html
 
     def predict(self, X):
-        TEMP = [ ]
-        for i in range(len(X)):
-            if type(X[i]) == dict:
-                temp = []
-                for col in self.columns.get('x'):
-                    if X[i].get(col) is not None:
-                        temp.append(X[i].get(col))
-                    else:
-                        temp.append(0)
-                TEMP.append(temp)
-            else:
-                TEMP.append(X[i])
-        X = np.array(TEMP)
+        if type(X) == pd.core.frame.DataFrame:
+            X = X.values.tolist()
+            X = np.array(X)
+        else:
+            TEMP = [ ]
+            for i in range(len(X)):
+                if type(X[i]) == dict:
+                    temp = []
+                    for col in self.columns.get('x'):
+                        if X[i].get(col) is not None:
+                            temp.append(X[i].get(col))
+                        else:
+                            temp.append(0)
+                    TEMP.append(temp)
+                else:
+                    TEMP.append(X[i])
+            X = np.array(TEMP)
         return np.dot(self.coef, X.transpose())
 
     def hypothesis_testing(self, col_X, col_y):
@@ -113,19 +117,23 @@ class LinearRegression:
         print('Pr:', p_value)
 
     def predict_interval(self, X, alpha = 0.05, mode = 'individual'):
-        TEMP = []
-        for i in range(len(X)):
-            if type(X[i]) == dict:
-                temp = []
-                for col in self.columns.get('x'):
-                    if X[i].get(col) is not None:
-                        temp.append(X[i].get(col))
-                    else:
-                        temp.append(0)
-                TEMP.append(temp)
-            else:
-                TEMP.append(X[i])
-        X = np.array(TEMP)
+        if type(X) == pd.core.frame.DataFrame:
+            X = X.values.tolist()
+            X = np.array(X)
+        else:
+            TEMP = []
+            for i in range(len(X)):
+                if type(X[i]) == dict:
+                    temp = []
+                    for col in self.columns.get('x'):
+                        if X[i].get(col) is not None:
+                            temp.append(X[i].get(col))
+                        else:
+                            temp.append(0)
+                    TEMP.append(temp)
+                else:
+                    TEMP.append(X[i])
+            X = np.array(TEMP)
 
         return_list = [ ]
         for i in range(len(X)):
