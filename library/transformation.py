@@ -65,3 +65,5 @@ def design_matrix(df, columns = None, intercept = True, category = None, interac
         df = df.drop(category, axis=1)
 
     return df
+
+def
