@@ -1,8 +1,1 @@
-# Linear Regression
-   hypothesis testing and residual analysis
-## Library required
-   numpy  
-   pandas  
-   sklearn  
-   matplotlab  
-   altair
+## Just for sharing my way to analyze the data in Jupyter Notebook.
