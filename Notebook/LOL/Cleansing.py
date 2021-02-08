@@ -92,3 +92,5 @@ data['Side'] = ['Blue' if x == 100 else 'Red' for x in data['Side']]
 data['Win'] = [1 if x == 'Win' else 0 for x in data['Win']]
 data.iloc[:, 2:8] = data.iloc[:, 2:8]*1
 
+data.to_csv('../../Data/LOL/lol_matches.csv')
+
