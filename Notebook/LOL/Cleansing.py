@@ -15,8 +15,7 @@ number_of_data = 10000
 sleep_time = 0.05
 username_length = 10
 
-# api_key = getpass.getpass('Please input your API key: ')
-api_key = 'RGAPI-80af90d2-3464-4e5b-aec0-8779e6405ddb'
+api_key = getpass.getpass('Please input your API key: ')
 
 total_match_ids = {}
 account_names = {}
