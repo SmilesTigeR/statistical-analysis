@@ -11,8 +11,8 @@ import time
 
 region = 'https://na1.api.riotgames.com'
 active_date = datetime.datetime.today() - datetime.timedelta(days = 7)
-number_of_data = 10
-sleep_time = 1
+number_of_data = 10000
+sleep_time = 0.5
 username_length = 10
 
 api_key = getpass.getpass('Please input your API key: ')
@@ -36,13 +36,14 @@ while len(data) < number_of_data:
     code = response.status_code
     result = response.json()
     if code != 200:
-        # print(result)
+        print(result)
         time.sleep(sleep_time)
         continue
     else:
         active_time = result['revisionDate']
 
     if active_time <= active_date.timestamp() * 1e3:
+        print(datetime.datetime.fromtimestamp(active_time/1e3))
         time.sleep(sleep_time)
         continue
     else:
@@ -54,7 +55,7 @@ while len(data) < number_of_data:
         code = response.status_code
         result = response.json()
         if code != 200:
-            # print(result)
+            print(result)
             time.sleep(sleep_time)
             continue
         else:
@@ -67,7 +68,7 @@ while len(data) < number_of_data:
                     code = response.status_code
                     result = response.json()
                     if code != 200:
-                        # print(result)
+                        print(result)
                         time.sleep(sleep_time)
                         continue
                     else:
@@ -143,14 +144,19 @@ while len(data) < number_of_data:
                                      total_neutral_minions_killed_enemy_jungle, total_time_crowd_control_dealt,
                                      total_champion_level]
 
+                            print(datum)
                             data.append(datum)
+                            total_match_ids[match_id] = True
+
                             if len(data) % 100 == 0 and len(data) > 0:
                                 print('There are {} data in total'.format(len(data)))
                                 print('')
-                        time.sleep(sleep_time)
-                else:
-                    total_match_ids[match_id] = True
 
+
+                else:
+                    continue
+
+            time.sleep(sleep_time)
 print('Finish crawling')
 
 data = pd.DataFrame(data, columns = ['Side', 'Win', 'First_Blood', 'First Tower', 'First_Inhibitor',
