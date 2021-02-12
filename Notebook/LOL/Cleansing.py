@@ -27,7 +27,7 @@ while len(data) < number_of_data:
 
     username = ''.join(random.choices(string.ascii_letters + string.digits, k=np.random.randint(3, username_length + 1, 1)[0]))
     while account_names.get(username) is not None:
-        initial_username = ''.join(random.choices(string.ascii_letters + string.digits, k=3))
+        username = ''.join(random.choices(string.ascii_letters + string.digits, k=3))
     account_names[username] = True
 
     url = region + '/lol/summoner/v4/summoners/by-name/' + username
@@ -36,14 +36,14 @@ while len(data) < number_of_data:
     code = response.status_code
     result = response.json()
     if code != 200:
-        print(result)
+        # print(result)
         time.sleep(sleep_time)
         continue
     else:
         active_time = result['revisionDate']
 
     if active_time <= active_date.timestamp() * 1e3:
-        print(datetime.datetime.fromtimestamp(active_time/1e3))
+        # print(datetime.datetime.fromtimestamp(active_time/1e3))
         time.sleep(sleep_time)
         continue
     else:
@@ -55,7 +55,7 @@ while len(data) < number_of_data:
         code = response.status_code
         result = response.json()
         if code != 200:
-            print(result)
+            # print(result)
             time.sleep(sleep_time)
             continue
         else:
@@ -68,7 +68,7 @@ while len(data) < number_of_data:
                     code = response.status_code
                     result = response.json()
                     if code != 200:
-                        print(result)
+                        # print(result)
                         time.sleep(sleep_time)
                         continue
                     else:
@@ -144,7 +144,7 @@ while len(data) < number_of_data:
                                      total_neutral_minions_killed_enemy_jungle, total_time_crowd_control_dealt,
                                      total_champion_level]
 
-                            print(datum)
+                            # print(datum)
                             data.append(datum)
                             total_match_ids[match_id] = True
 
@@ -177,5 +177,5 @@ data['Side'] = ['Blue' if x == 100 else 'Red' for x in data['Side']]
 data['Win'] = [1 if x == 'Win' else 0 for x in data['Win']]
 data.iloc[:, 2:8] = data.iloc[:, 2:8]*1
 
-data.to_csv('../../Data/LOL/lol_matches.csv')
+data.to_csv('../../Data/LOL/lol_matches.csv', index = False)
 
