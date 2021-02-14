@@ -159,7 +159,7 @@ while len(data) < number_of_data:
             time.sleep(sleep_time)
 print('Finish crawling')
 
-data = pd.DataFrame(data, columns = ['Side', 'Win', 'First_Blood', 'First Tower', 'First_Inhibitor',
+data = pd.DataFrame(data, columns = ['Side', 'Win', 'First_Blood', 'First_Tower', 'First_Inhibitor',
                                      'First_Baron', 'First_Dragon', 'First_Rift_Herald', 'Tower_Destroyed',
                                      'Inhibitor_Destroyed', 'Baron_Killed', 'Dragon_Killed', 'Vilemaw_Killed',
                                      'Rift_Herald_Killed', 'Game_Duration', 'Total_Kills', 'Total_Deaths',
